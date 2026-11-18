@@ -1,12 +1,16 @@
-name: Daily gold & silver check
+name: Gold & silver price check
 
 on:
   schedule:
-    - cron: "30 6 * * *"
+    - cron: "30 * * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: price-check
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -25,5 +29,6 @@ jobs:
           git config user.name  "price-bot"
           git config user.email "price-bot@users.noreply.github.com"
           git add docs/history.json
-          git diff --cached --quiet || git commit -m "Prices $(date -u +%F)"
+          git diff --cached --quiet || git commit -m "Prices $(date -u '+%F %H:%M')"
+          git pull --rebase --quiet || true
           git push
