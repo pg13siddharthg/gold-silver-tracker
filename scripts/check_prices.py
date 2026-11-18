@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
-Daily Gold & Silver (India) price check.
+Hourly Gold & Silver (India) price check.
 
-- Fetches gold (XAU) and silver (XAG) prices in INR per troy ounce from the
-  free, key-less fawazahmed0 currency API (with a fallback mirror).
-- Converts to Indian quoting units: gold per 10 g (24K and 22K), silver per 1 kg,
-  and adds Indian import duty (and optionally GST) to estimate the domestic rate.
-- Appends the day's prices to docs/history.json (read by the phone app).
-- Sends a push notification to your Android phone through ntfy.sh when a price
-  falls past your thresholds.
+Every run (hourly via GitHub Actions):
+  1. Fetches live gold & silver prices in INR (xaus.com, free, no key),
+     falling back to the daily fawazahmed0 feed if that is unavailable.
+  2. Converts to Indian units (gold /10g 24K & 22K, silver /kg) and adds
+     Indian import duty (and optionally GST).
+  3. Updates today's row in docs/history.json (one row per India date; the last
+     run of the day becomes that day's close) and today's hourly points.
+  4. Sends ntfy push alerts on falls -- each kind of alert at most once a day --
+     and one daily summary at the configured India-time hour.
 
-Standard library only, so it runs on GitHub Actions with no installs.
+Standard library only.
 
 Usage:
-    NTFY_TOPIC=my-secret-topic python scripts/check_prices.py
-    python scripts/check_prices.py --dry-run            # print, don't notify
-    python scripts/check_prices.py --mock prices.json   # use fake prices (testing)
+    NTFY_TOPIC=my-topic python scripts/check_prices.py
+    python scripts/check_prices.py --dry-run
+    python scripts/check_prices.py --dry-run --mock m.json --now 2026-11-19T06:30:00Z
+        (m.json: {"xau_inr_oz": 360000, "xag_inr_oz": 4400})
 """
 
 import argparse
@@ -23,21 +26,18 @@ import json
 import os
 import sys
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "docs" / "config.json"
 HISTORY_PATH = ROOT / "docs" / "history.json"
 
+IST = timezone(timedelta(hours=5, minutes=30))
 TROY_OZ_G = 31.1034768
 PURITY_22K = 0.916
-MAX_HISTORY = 800  # ~2 years of daily points
-
-SOURCES = [
-    "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{m}.min.json",
-    "https://latest.currency-api.pages.dev/v1/currencies/{m}.min.json",
-]
+MAX_HISTORY = 800
+UA = {"User-Agent": "gold-silver-tracker (personal use)"}
 
 METALS = {
     "gold": {"key": "gold_24k_10g", "label": "Gold 24K", "unit": "10g", "emoji": "1st_place_medal"},
@@ -46,50 +46,70 @@ METALS = {
 
 
 # ---------------------------------------------------------------- fetching
-def fetch_inr_per_oz(metal_code):
-    """Return (date_str, INR per troy ounce) for 'xau' or 'xag'."""
-    last_err = None
-    for url in SOURCES:
-        try:
-            req = urllib.request.Request(url.format(m=metal_code),
-                                         headers={"User-Agent": "gold-silver-tracker"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                data = json.load(r)
-            inr = float(data[metal_code]["inr"])
-            if inr <= 0:
-                raise ValueError("non-positive price")
-            return data.get("date"), inr
-        except Exception as e:  # try next mirror
-            last_err = e
-    raise RuntimeError(f"Could not fetch {metal_code}: {last_err}")
+def get_json(url):
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)
 
 
-def build_entry(cfg, gold_oz, silver_oz, date_str):
+def fetch_live():
+    """Live INR/oz for gold and silver from xaus.com."""
+    d = get_json("https://xaus.com/api/v1/spot?currency=INR&unit=oz")
+    gold_inr = float(d["xau"]["price"])
+    gold_usd = float(d["spot_usd_oz"])
+    silver_usd = float(d["silver_usd_oz"])
+    if min(gold_inr, gold_usd, silver_usd) <= 0:
+        raise ValueError("bad live values")
+    fx = gold_inr / gold_usd  # INR per USD implied by the same response
+    return gold_inr, silver_usd * fx, "xaus.com live"
+
+
+def fetch_daily():
+    """Fallback: daily INR/oz from the fawazahmed0 currency API."""
+    out = {}
+    for m in ("xau", "xag"):
+        for url in (f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{m}.min.json",
+                    f"https://latest.currency-api.pages.dev/v1/currencies/{m}.min.json"):
+            try:
+                out[m] = float(get_json(url)[m]["inr"])
+                break
+            except Exception:
+                continue
+        if m not in out:
+            raise RuntimeError(f"daily feed unavailable for {m}")
+    return out["xau"], out["xag"], "daily feed (fallback)"
+
+
+def fetch_prices():
+    try:
+        return fetch_live()
+    except Exception as e:
+        print(f"Live source failed ({e}); using daily fallback.", file=sys.stderr)
+        return fetch_daily()
+
+
+# ---------------------------------------------------------------- helpers
+def prices(cfg, gold_oz, silver_oz):
     duty = 1 + cfg.get("import_duty_pct", 0) / 100
     gst = 1 + (cfg.get("gst_pct", 0) / 100 if cfg.get("include_gst") else 0)
-    gold_spot_10g = gold_oz / TROY_OZ_G * 10
-    silver_spot_kg = silver_oz / TROY_OZ_G * 1000
-    g24 = gold_spot_10g * duty * gst
+    g_spot = gold_oz / TROY_OZ_G * 10
+    s_spot = silver_oz / TROY_OZ_G * 1000
+    g24 = g_spot * duty * gst
     return {
-        "date": date_str,
-        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "gold_24k_10g": round(g24, 2),
         "gold_22k_10g": round(g24 * PURITY_22K, 2),
-        "silver_1kg": round(silver_spot_kg * duty * gst, 2),
-        "gold_spot_10g": round(gold_spot_10g, 2),
-        "silver_spot_kg": round(silver_spot_kg, 2),
+        "silver_1kg": round(s_spot * duty * gst, 2),
+        "gold_spot_10g": round(g_spot, 2),
+        "silver_spot_kg": round(s_spot, 2),
     }
 
 
-# ---------------------------------------------------------------- analysis
 def pct(new, old):
     return (new - old) / old * 100 if old else 0.0
 
 
 def inr(x):
-    """Indian digit grouping, e.g. 1,23,456."""
-    s = f"{x:,.0f}"
-    whole = s.replace(",", "")
+    whole = f"{x:.0f}"
     if len(whole) <= 3:
         return "₹" + whole
     head, tail = whole[:-3], whole[-3:]
@@ -102,89 +122,89 @@ def inr(x):
     return "₹" + ",".join(groups) + "," + tail
 
 
-def evaluate(cfg, history, entry):
-    """Return (alerts, summary_lines). history excludes today's entry."""
-    alerts, summary = [], []
-    lookback = int(cfg.get("lookback_days", 30))
-    prev = history[-1] if history else None
-    window = history[-lookback:] if history else []
-
-    for metal, meta in METALS.items():
-        key = meta["key"]
-        rules = cfg.get("alerts", {}).get(metal, {})
-        price = entry[key]
-        line = f"{meta['label']}: {inr(price)}/{meta['unit']}"
-
-        if prev and prev.get(key):
-            day = pct(price, prev[key])
-            line += f" ({day:+.2f}%)"
-            thr = rules.get("daily_drop_pct")
-            if thr is not None and day <= -abs(thr):
-                alerts.append({
-                    "metal": metal, "type": "daily_drop",
-                    "title": f"{meta['label']} down {abs(day):.2f}% today",
-                    "message": f"{inr(prev[key])} → {inr(price)} per {meta['unit']} "
-                               f"(threshold {abs(thr)}%)",
-                })
-
-        if window:
-            high = max(e[key] for e in window + [entry] if e.get(key))
-            dd = pct(price, high)
-            thr = rules.get("drop_from_high_pct")
-            if thr is not None and dd <= -abs(thr):
-                # alert only on the day it first crosses, not every day after
-                prev_high = max(e[key] for e in window if e.get(key))
-                prev_dd = pct(prev[key], prev_high) if prev else 0
-                if prev_dd > -abs(thr):
-                    alerts.append({
-                        "metal": metal, "type": "drop_from_high",
-                        "title": f"{meta['label']} {abs(dd):.1f}% below {lookback}-day high",
-                        "message": f"Now {inr(price)} vs high {inr(high)} per {meta['unit']}",
-                    })
-
-        floor = rules.get("below_price")
-        if floor:
-            was_above = (prev is None) or prev.get(key, float("inf")) >= floor
-            if price < floor and was_above:
-                alerts.append({
-                    "metal": metal, "type": "below_price",
-                    "title": f"{meta['label']} below your target {inr(floor)}",
-                    "message": f"Now {inr(price)} per {meta['unit']}",
-                })
-        summary.append(line)
-
-    summary.append(f"22K gold: {inr(entry['gold_22k_10g'])}/10g")
-    return alerts, summary
-
-
-# ---------------------------------------------------------------- notify
 def notify(topic, title, message, priority=3, tags=None, click=None, dry_run=False):
     payload = {"topic": topic, "title": title, "message": message,
                "priority": priority, "tags": tags or []}
     if click:
         payload["click"] = click
     if dry_run or not topic:
-        print(f"[notify p{priority}] {title}\n    {message}")
+        print(f"[notify p{priority}] {title}\n    " + message.replace("\n", "\n    "))
         return
-    req = urllib.request.Request(
-        "https://ntfy.sh/", data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"}, method="POST")
+    req = urllib.request.Request("https://ntfy.sh/", data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json"}, method="POST")
     with urllib.request.urlopen(req, timeout=30) as r:
         r.read()
 
 
-# ---------------------------------------------------------------- main
 def load_json(path, default):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(Path(path).read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return default
 
 
+# ---------------------------------------------------------------- alerts
+def evaluate(cfg, past, today):
+    """past = rows before today (oldest first); today = today's row (already updated).
+    Returns list of new alerts (each kind at most once per India day)."""
+    sent = set(today.setdefault("sent", []))
+    alerts = []
+    lookback = int(cfg.get("lookback_days", 30))
+    prev = past[-1] if past else None
+
+    for metal, meta in METALS.items():
+        key, rules = meta["key"], cfg.get("alerts", {}).get(metal, {})
+        price = today[key]
+
+        thr = rules.get("daily_drop_pct")
+        if prev and thr is not None and f"{metal}:daily_drop" not in sent:
+            chg = pct(price, prev[key])
+            if chg <= -abs(thr):
+                alerts.append((metal, "daily_drop", 4,
+                               f"{meta['label']} down {abs(chg):.2f}% today",
+                               f"{inr(prev[key])} → {inr(price)} per {meta['unit']} since yesterday's close"))
+
+        thr = rules.get("drop_from_high_pct")
+        window = past[-lookback:]
+        if prev and thr is not None and f"{metal}:drop_from_high" not in sent:
+            high = max([r[key] for r in window] + [price])
+            dd = pct(price, high)
+            prev_high = max(r[key] for r in window)
+            prev_dd = pct(prev[key], prev_high)
+            if dd <= -abs(thr) and prev_dd > -abs(thr):  # newly crossed today
+                alerts.append((metal, "drop_from_high", 4,
+                               f"{meta['label']} {abs(dd):.1f}% below {lookback}-day high",
+                               f"Now {inr(price)} vs high {inr(high)} per {meta['unit']}"))
+
+        floor = rules.get("below_price")
+        if floor and f"{metal}:below_price" not in sent:
+            was_above = prev is None or prev[key] >= floor
+            if price < floor and was_above:
+                alerts.append((metal, "below_price", 5,
+                               f"{meta['label']} below your target {inr(floor)}",
+                               f"Now {inr(price)} per {meta['unit']}"))
+    return alerts
+
+
+def summary_text(past, today):
+    prev = past[-1] if past else None
+    lines = []
+    for metal, meta in METALS.items():
+        k = meta["key"]
+        s = f"{meta['label']}: {inr(today[k])}/{meta['unit']}"
+        if prev:
+            s += f" ({pct(today[k], prev[k]):+.2f}%)"
+        lines.append(s)
+    lines.append(f"22K gold: {inr(today['gold_22k_10g'])}/10g")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true", help="print notifications instead of sending")
-    ap.add_argument("--mock", help='JSON file: {"date": "...", "xau_inr": ..., "xag_inr": ...}')
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--mock", help='JSON file {"xau_inr_oz":..., "xag_inr_oz":...}')
+    ap.add_argument("--now", help="override current time (ISO, for testing)")
     ap.add_argument("--history", default=str(HISTORY_PATH))
     args = ap.parse_args()
 
@@ -193,49 +213,65 @@ def main():
     history = load_json(hist_path, [])
     topic = os.environ.get("NTFY_TOPIC", "").strip()
     click = cfg.get("dashboard_url") or None
+    now = (datetime.fromisoformat(args.now.replace("Z", "+00:00")) if args.now
+           else datetime.now(timezone.utc))
+    now_ist = now.astimezone(IST)
+    today_str = now_ist.date().isoformat()
 
     try:
         if args.mock:
-            m = json.loads(Path(args.mock).read_text())
-            date_str, gold_oz, silver_oz = m["date"], m["xau_inr"], m["xag_inr"]
+            m = load_json(args.mock, {})
+            gold_oz, silver_oz, source = m["xau_inr_oz"], m["xag_inr_oz"], "mock"
         else:
-            d1, gold_oz = fetch_inr_per_oz("xau")
-            d2, silver_oz = fetch_inr_per_oz("xag")
-            date_str = d1 or d2 or datetime.now(timezone.utc).date().isoformat()
+            gold_oz, silver_oz, source = fetch_prices()
     except Exception as e:
-        notify(topic, "Price check failed", str(e)[:300], priority=2,
-               tags=["warning"], dry_run=args.dry_run)
         print(e, file=sys.stderr)
+        # one failure note per day, not every hour
+        if history and history[-1].get("date") == today_str and "fail" in history[-1].get("sent", []):
+            return 1
+        notify(topic, "Price check failed", str(e)[:300], 2, ["warning"], dry_run=args.dry_run)
+        if history and history[-1].get("date") == today_str:
+            history[-1].setdefault("sent", []).append("fail")
+            hist_path.write_text(json.dumps(history, indent=1), encoding="utf-8")
         return 1
 
-    entry = build_entry(cfg, gold_oz, silver_oz, date_str)
+    p = prices(cfg, gold_oz, silver_oz)
 
-    # If the feed hasn't published a new day yet, refresh today's row and stop
-    # (prevents duplicate alerts when the job runs twice on the same data).
-    if history and history[-1].get("date") == date_str:
-        entry["alerts"] = history[-1].get("alerts", [])
-        history[-1] = entry
-        hist_path.write_text(json.dumps(history, indent=1), encoding="utf-8")
-        print(f"No new data for {date_str}; updated existing row, no alerts sent.")
-        return 0
+    # today's row: create on the first run of the India day, update after
+    if history and history[-1].get("date") == today_str:
+        today = history[-1]
+        past = history[:-1]
+    else:
+        if history:
+            history[-1].pop("points", None)  # keep only today's hourly points
+        today = {"date": today_str, "alerts": [], "sent": [], "points": []}
+        history.append(today)
+        past = history[:-1]
+    today.update(p)
+    today["fetched_at"] = now.isoformat(timespec="seconds")
+    today["source"] = source
+    today.setdefault("points", []).append(
+        {"t": now_ist.strftime("%H:%M"), **{k: p[k] for k in
+         ("gold_24k_10g", "silver_1kg", "gold_spot_10g", "silver_spot_kg")}})
+    today["points"] = today["points"][-48:]
 
-    alerts, summary = evaluate(cfg, history, entry)
-    entry["alerts"] = [a["title"] for a in alerts]
-    history.append(entry)
+    alerts = evaluate(cfg, past, today)
+    summary = summary_text(past, today)
+    print(f"{now_ist:%Y-%m-%d %H:%M} IST ({source})\n{summary}")
+
+    for metal, kind, prio, title, msg in alerts:
+        notify(topic, title, f"{msg}\n\n{summary}", prio,
+               ["chart_with_downwards_trend", METALS[metal]["emoji"]], click, args.dry_run)
+        today["sent"].append(f"{metal}:{kind}")
+        today["alerts"].append(f"{now_ist:%H:%M} · {title}")
+
+    hour = int(cfg.get("daily_summary_hour_ist", 12))
+    if cfg.get("daily_summary", True) and now_ist.hour >= hour and "summary" not in today["sent"]:
+        notify(topic, f"Gold & Silver · {now_ist:%d %b}", summary, 3,
+               ["bar_chart"], click, args.dry_run)
+        today["sent"].append("summary")
+
     hist_path.write_text(json.dumps(history[-MAX_HISTORY:], indent=1), encoding="utf-8")
-
-    summary_text = "\n".join(summary)
-    print(f"{date_str}\n{summary_text}")
-
-    for a in alerts:
-        notify(topic, a["title"], a["message"] + "\n\n" + summary_text,
-               priority=4 if a["type"] != "below_price" else 5,
-               tags=["chart_with_downwards_trend", METALS[a["metal"]]["emoji"]],
-               click=click, dry_run=args.dry_run)
-
-    if not alerts and cfg.get("daily_summary"):
-        notify(topic, f"Gold & Silver – {date_str}", summary_text, priority=2,
-               tags=["bar_chart"], click=click, dry_run=args.dry_run)
     return 0
 
 
