@@ -1,0 +1,20 @@
+{
+  "import_duty_pct": 15,
+  "gst_pct": 3,
+  "include_gst": false,
+  "lookback_days": 30,
+  "daily_summary": true,
+  "dashboard_url": "",
+  "alerts": {
+    "gold": {
+      "daily_drop_pct": 1.0,
+      "drop_from_high_pct": 3.0,
+      "below_price": null
+    },
+    "silver": {
+      "daily_drop_pct": 2.0,
+      "drop_from_high_pct": 5.0,
+      "below_price": null
+    }
+  }
+}
