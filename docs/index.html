@@ -107,7 +107,7 @@
       </div>
     </div>
     <div class="ranges" id="ranges">
-      <button data-d="0" class="on">Today</button><button data-d="30">1M</button><button data-d="90">3M</button>
+      <button data-d="0">Today</button><button data-d="30" class="on">1M</button><button data-d="90">3M</button>
       <button data-d="180">6M</button><button data-d="365">1Y</button><button data-d="9999">All</button>
     </div>
     <div class="chart" id="chart"><div class="tip" id="tip"></div></div>
@@ -135,7 +135,7 @@ const API = [
   m => `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${m}.min.json`,
   m => `https://latest.currency-api.pages.dev/v1/currencies/${m}.min.json`,
 ];
-const state = { cfg: {}, hist: [], live: null, mode: 'india', metal: 'gold', days: 0, ticks: [] };
+const state = { cfg: {}, hist: [], live: null, mode: 'india', metal: 'gold', days: 30, ticks: [] };
 const $ = id => document.getElementById(id);
 const fmt = n => n == null || isNaN(n) ? '–' : '₹' + Math.round(n).toLocaleString('en-IN');
 const short = n => n >= 1e5 ? '₹' + (n/1e5).toFixed(2) + 'L' : '₹' + Math.round(n/1000) + 'k';
