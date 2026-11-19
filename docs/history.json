@@ -4011,7 +4011,8 @@
   "sent": [
    "gold:daily_drop",
    "silver:daily_drop",
-   "backfill"
+   "backfill",
+   "summary"
   ],
   "points": [
    {
@@ -4097,14 +4098,21 @@
     "silver_1kg": 156642.52,
     "gold_spot_10g": 112293.03,
     "silver_spot_kg": 136210.89
+   },
+   {
+    "t": "13:22",
+    "gold_24k_10g": 129116.24,
+    "silver_1kg": 156393.59,
+    "gold_spot_10g": 112274.99,
+    "silver_spot_kg": 135994.42
    }
   ],
-  "gold_24k_10g": 129136.99,
-  "gold_22k_10g": 118289.48,
-  "silver_1kg": 156642.52,
-  "gold_spot_10g": 112293.03,
-  "silver_spot_kg": 136210.89,
-  "fetched_at": "2026-11-19T06:27:37+00:00",
+  "gold_24k_10g": 129116.24,
+  "gold_22k_10g": 118270.48,
+  "silver_1kg": 156393.59,
+  "gold_spot_10g": 112274.99,
+  "silver_spot_kg": 135994.42,
+  "fetched_at": "2026-11-19T07:52:12+00:00",
   "source": "xaus.com live"
  }
 ]
