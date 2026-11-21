@@ -4047,142 +4047,21 @@
   "sent": [
    "summary"
   ],
+  "gold_24k_10g": 122177.04,
+  "gold_22k_10g": 111914.17,
+  "silver_1kg": 141820.66,
+  "gold_spot_10g": 106240.9,
+  "silver_spot_kg": 123322.31,
+  "fetched_at": "2026-11-21T18:10:31+00:00",
+  "source": "xaus.com live"
+ },
+ {
+  "date": "2026-11-22",
+  "alerts": [],
+  "sent": [],
   "points": [
    {
-    "t": "01:03",
-    "gold_24k_10g": 121343.31,
-    "silver_1kg": 141026.61,
-    "gold_spot_10g": 105515.92,
-    "silver_spot_kg": 122631.84
-   },
-   {
-    "t": "02:49",
-    "gold_24k_10g": 121430.31,
-    "silver_1kg": 140405.2,
-    "gold_spot_10g": 105591.57,
-    "silver_spot_kg": 122091.48
-   },
-   {
-    "t": "03:48",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "04:46",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "05:47",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "07:16",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "08:48",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "09:57",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "10:58",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "12:00",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "13:56",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "14:47",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "15:47",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "16:45",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "17:43",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "19:01",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "20:46",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "21:45",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "22:45",
-    "gold_24k_10g": 122177.04,
-    "silver_1kg": 141820.66,
-    "gold_spot_10g": 106240.9,
-    "silver_spot_kg": 123322.31
-   },
-   {
-    "t": "23:40",
+    "t": "00:52",
     "gold_24k_10g": 122177.04,
     "silver_1kg": 141820.66,
     "gold_spot_10g": 106240.9,
@@ -4194,7 +4073,7 @@
   "silver_1kg": 141820.66,
   "gold_spot_10g": 106240.9,
   "silver_spot_kg": 123322.31,
-  "fetched_at": "2026-11-21T18:10:31+00:00",
+  "fetched_at": "2026-11-21T19:22:45+00:00",
   "source": "xaus.com live"
  }
 ]
