@@ -4194,6 +4194,13 @@
     "silver_1kg": 141086.06,
     "gold_spot_10g": 105690.6,
     "silver_spot_kg": 122683.53
+   },
+   {
+    "t": "23:40",
+    "gold_24k_10g": 121544.19,
+    "silver_1kg": 141086.06,
+    "gold_spot_10g": 105690.6,
+    "silver_spot_kg": 122683.53
    }
   ],
   "gold_24k_10g": 121544.19,
@@ -4201,7 +4208,7 @@
   "silver_1kg": 141086.06,
   "gold_spot_10g": 105690.6,
   "silver_spot_kg": 122683.53,
-  "fetched_at": "2026-11-22T17:15:11+00:00",
+  "fetched_at": "2026-11-22T18:10:31+00:00",
   "source": "xaus.com live"
  }
 ]
