@@ -4187,14 +4187,21 @@
     "silver_1kg": 148853.45,
     "gold_spot_10g": 109280.33,
     "silver_spot_kg": 129437.79
+   },
+   {
+    "t": "23:53",
+    "gold_24k_10g": 125351.72,
+    "silver_1kg": 148064.69,
+    "gold_spot_10g": 109001.5,
+    "silver_spot_kg": 128751.91
    }
   ],
-  "gold_24k_10g": 125672.38,
-  "gold_22k_10g": 115115.9,
-  "silver_1kg": 148853.45,
-  "gold_spot_10g": 109280.33,
-  "silver_spot_kg": 129437.79,
-  "fetched_at": "2026-11-23T17:27:26+00:00",
+  "gold_24k_10g": 125351.72,
+  "gold_22k_10g": 114822.18,
+  "silver_1kg": 148064.69,
+  "gold_spot_10g": 109001.5,
+  "silver_spot_kg": 128751.91,
+  "fetched_at": "2026-11-23T18:23:32+00:00",
   "source": "xaus.com live"
  }
 ]
