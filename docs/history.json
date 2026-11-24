@@ -4085,8 +4085,12 @@
  },
  {
   "date": "2026-11-24",
-  "alerts": [],
-  "sent": [],
+  "alerts": [
+   "11:54 \u00b7 Silver down 2.11% today"
+  ],
+  "sent": [
+   "silver:daily_drop"
+  ],
   "points": [
    {
     "t": "01:02",
@@ -4143,14 +4147,21 @@
     "silver_1kg": 145665.2,
     "gold_spot_10g": 108383.89,
     "silver_spot_kg": 126665.39
+   },
+   {
+    "t": "11:54",
+    "gold_24k_10g": 124500.5,
+    "silver_1kg": 144943.14,
+    "gold_spot_10g": 108261.31,
+    "silver_spot_kg": 126037.52
    }
   ],
-  "gold_24k_10g": 124641.48,
-  "gold_22k_10g": 114171.59,
-  "silver_1kg": 145665.2,
-  "gold_spot_10g": 108383.89,
-  "silver_spot_kg": 126665.39,
-  "fetched_at": "2026-11-24T04:36:53+00:00",
+  "gold_24k_10g": 124500.5,
+  "gold_22k_10g": 114042.46,
+  "silver_1kg": 144943.14,
+  "gold_spot_10g": 108261.31,
+  "silver_spot_kg": 126037.52,
+  "fetched_at": "2026-11-24T06:24:38+00:00",
   "source": "xaus.com live"
  }
 ]
